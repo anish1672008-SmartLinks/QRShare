@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,163 +9,256 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <style>
-body {
-  margin:0;
-  font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-  color:white;
-  text-align:center;
+
+body{
+margin:0;
+font-family:Segoe UI;
+background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+color:white;
+text-align:center;
 }
 
-.container {
-  margin-top:40px;
+.container{
+margin-top:40px;
 }
 
-h1 {
-  font-size:32px;
+.card{
+background:rgba(255,255,255,0.1);
+backdrop-filter:blur(15px);
+padding:25px;
+border-radius:20px;
+display:inline-block;
+box-shadow:0 10px 30px rgba(0,0,0,0.5);
 }
 
-.card {
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(15px);
-  border-radius:20px;
-  padding:25px;
-  display:inline-block;
-  box-shadow:0 10px 30px rgba(0,0,0,0.5);
+canvas{
+background:white;
+padding:10px;
+border-radius:10px;
+margin:10px;
 }
 
-canvas {
-  margin:15px;
-  background:white;
-  padding:10px;
-  border-radius:10px;
+button{
+padding:10px 20px;
+border:none;
+border-radius:10px;
+background:#00c6ff;
+color:black;
+font-weight:bold;
+cursor:pointer;
+margin-top:10px;
 }
 
-button {
-  margin-top:10px;
-  padding:10px 20px;
-  border:none;
-  border-radius:10px;
-  background:#00c6ff;
-  color:black;
-  font-weight:bold;
-  cursor:pointer;
+input{
+margin-top:10px;
 }
 
-input {
-  margin-top:10px;
+.fileBox{
+margin-top:15px;
+background:rgba(255,255,255,0.1);
+padding:10px;
+border-radius:10px;
 }
 
-#status {
-  margin-top:10px;
-  font-size:14px;
-  color:#00ffcc;
+#status{
+margin-top:10px;
+color:#00ffcc;
 }
 
-.fileBox {
-  margin-top:15px;
-  background:rgba(255,255,255,0.1);
-  padding:10px;
-  border-radius:10px;
+img{
+max-width:200px;
+display:block;
+margin:auto;
+margin-bottom:10px;
 }
+
 </style>
 </head>
 
 <body>
 
 <div class="container">
-  <h1>⚡ AniShare</h1>
 
-  <div class="card">
-    <canvas id="qr"></canvas>
-    <p id="id"></p>
+<h1>⚡ AniShare</h1>
 
-    <input type="file" id="fileInput"><br>
-    <button onclick="sendFile()">Send File</button>
+<div class="card">
 
-    <div id="status"></div>
-  </div>
+<canvas id="qr"></canvas>
+<p id="id"></p>
 
-  <h2>📥 Received Files</h2>
-  <div id="output"></div>
+<input type="file" id="fileInput"><br>
+
+<button onclick="sendFile()">Send File</button>
+
+<div id="status"></div>
+
+</div>
+
+<h2>📥 Received Files</h2>
+
+<div id="output"></div>
+
 </div>
 
 <script>
+
 let peer = new Peer();
 let conn;
 
-peer.on('open', function(id) {
-  document.getElementById("id").innerText = "Your ID: " + id;
+let receivedChunks = [];
 
-  let url = window.location.href + "?id=" + id;
+peer.on('open',function(id){
 
-  // FIXED QR
-  QRCode.toCanvas(document.getElementById('qr'), url, function (error) {
-    if (error) console.error(error);
-  });
+document.getElementById("id").innerText="Your ID: "+id;
+
+let url = window.location.href+"?id="+id;
+
+QRCode.toCanvas(document.getElementById("qr"),url);
+
 });
 
-// mobile connect
 const params = new URLSearchParams(window.location.search);
 const connectTo = params.get("id");
 
-if (connectTo) {
-  peer.on('open', function(id) {
-    conn = peer.connect(connectTo);
+if(connectTo){
 
-    conn.on('open', () => {
-      document.body.innerHTML = `
-      <h2 style="color:black">📤 Send File</h2>
-      <input type="file" id="fileInput">
-      <button onclick="sendFile()">Send</button>
-      `;
-    });
-  });
-}
+peer.on('open',function(){
 
-// receive
-peer.on('connection', function(connection) {
-  conn = connection;
-conn.on('data', function(data) {
-  let blob = new Blob([data.data], { type: data.type });
-  let url = URL.createObjectURL(blob);
+conn = peer.connect(connectTo);
 
-  let div = document.createElement("div");
-  div.className = "fileBox";
+conn.on('open',()=>{
 
-  let link = document.createElement("a");
-  link.href = url;
-  link.download = data.name;
-  link.innerText = "⬇ Download " + data.name;
+document.body.innerHTML=`
 
-  div.appendChild(link);
-  document.getElementById("output").appendChild(div);
+<h2 style="color:black">📤 Send File</h2>
 
-  document.getElementById("status").innerText = "✅ File received!";
-});
+<input type="file" id="fileInput">
+<br><br>
+<button onclick="sendFile()">Send</button>
+
+<div id="status"></div>
+
+`;
+
 });
 
-// send
-function sendFile() {
-  let file = document.getElementById("fileInput").files[0];
-  if (!file) return alert("Select file first!");
+});
 
-  let reader = new FileReader();
-
-  reader.onload = function() {
-
-    conn.send({
-      name: file.name,
-      type: file.type,
-      data: reader.result
-    });
-
-    document.getElementById("status").innerText = "🚀 File sent!";
-  };
-
-  reader.readAsArrayBuffer(file);
 }
+
+peer.on('connection',function(connection){
+
+conn = connection;
+
+conn.on('data',function(data){
+
+receivedChunks[data.index] = data.chunk;
+
+let percent = Math.floor(((data.index+1)/data.total)*100);
+
+document.getElementById("status").innerText =
+"📥 Receiving... "+percent+"%";
+
+if(data.index+1 === data.total){
+
+let blob = new Blob(receivedChunks,{type:data.type});
+
+let url = URL.createObjectURL(blob);
+
+let div = document.createElement("div");
+
+div.className="fileBox";
+
+if(data.type.startsWith("image/")){
+
+let img = document.createElement("img");
+
+img.src = url;
+
+div.appendChild(img);
+
+}
+
+let link = document.createElement("a");
+
+link.href=url;
+
+link.download=data.name;
+
+link.innerText="⬇ Download "+data.name;
+
+div.appendChild(link);
+
+document.getElementById("output").appendChild(div);
+
+document.getElementById("status").innerText="✅ File received!";
+
+receivedChunks=[];
+
+}
+
+});
+
+});
+
+function sendFile(){
+
+let file = document.getElementById("fileInput").files[0];
+
+if(!file) return alert("Select file");
+
+const chunkSize = 16000;
+
+const totalChunks = Math.ceil(file.size/chunkSize);
+
+let chunk = 0;
+
+const reader = new FileReader();
+
+reader.onload=function(e){
+
+conn.send({
+
+name:file.name,
+type:file.type,
+size:file.size,
+chunk:e.target.result,
+index:chunk,
+total:totalChunks
+
+});
+
+chunk++;
+
+document.getElementById("status").innerText =
+"🚀 Sending "+Math.floor((chunk/totalChunks)*100)+"%";
+
+if(chunk < totalChunks){
+
+readSlice(chunk);
+
+}else{
+
+document.getElementById("status").innerText="✅ File Sent";
+
+}
+
+};
+
+function readSlice(n){
+
+const slice = file.slice(n*chunkSize,(n+1)*chunkSize);
+
+reader.readAsArrayBuffer(slice);
+
+}
+
+readSlice(0);
+
+}
+
 </script>
 
 </body>
 </html>
+```
