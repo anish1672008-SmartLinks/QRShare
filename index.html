@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>⚡ AniShare - QR File Transfer</title>
+<title>⚡ AniShare</title>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
@@ -16,13 +16,7 @@ body {
   text-align:center;
 }
 
-.container {
-  margin-top:40px;
-}
-
-h1 {
-  font-size:32px;
-}
+.container { margin-top:40px; }
 
 .card {
   background: rgba(255,255,255,0.1);
@@ -30,11 +24,9 @@ h1 {
   border-radius:20px;
   padding:25px;
   display:inline-block;
-  box-shadow:0 10px 30px rgba(0,0,0,0.5);
 }
 
 canvas {
-  margin:15px;
   background:white;
   padding:10px;
   border-radius:10px;
@@ -46,25 +38,13 @@ button {
   border:none;
   border-radius:10px;
   background:#00c6ff;
-  color:black;
-  font-weight:bold;
   cursor:pointer;
-}
-
-input {
-  margin-top:10px;
-}
-
-#status {
-  margin-top:10px;
-  font-size:14px;
-  color:#00ffcc;
 }
 
 .fileBox {
   margin-top:15px;
-  background:rgba(255,255,255,0.1);
   padding:10px;
+  background:rgba(255,255,255,0.1);
   border-radius:10px;
 }
 </style>
@@ -81,8 +61,6 @@ input {
 
     <input type="file" id="fileInput"><br>
     <button onclick="sendFile()">Send File</button>
-
-    <div id="status"></div>
   </div>
 
   <h2>📥 Received Files</h2>
@@ -93,15 +71,13 @@ input {
 let peer = new Peer();
 let conn;
 
+// PC side
 peer.on('open', function(id) {
-  document.getElementById("id").innerText = "Your ID: " + id;
+  document.getElementById("id").innerText = "ID: " + id;
 
   let url = window.location.href + "?id=" + id;
 
-  // FIXED QR
-  QRCode.toCanvas(document.getElementById('qr'), url, function (error) {
-    if (error) console.error(error);
-  });
+  QRCode.toCanvas(document.getElementById('qr'), url);
 });
 
 // mobile connect
@@ -127,34 +103,46 @@ peer.on('connection', function(connection) {
   conn = connection;
 
   conn.on('data', function(data) {
-    let blob = new Blob([data]);
+
+    let blob = new Blob([data.data], { type: data.type });
     let url = URL.createObjectURL(blob);
 
     let div = document.createElement("div");
     div.className = "fileBox";
 
+    // image preview
+    if (data.type.startsWith("image/")) {
+      let img = document.createElement("img");
+      img.src = url;
+      img.style.width = "150px";
+      div.appendChild(img);
+    }
+
     let link = document.createElement("a");
     link.href = url;
-    link.download = "file";
-    link.innerText = "⬇ Download File";
+    link.download = data.name;
+    link.innerText = "⬇ Download " + data.name;
 
+    div.appendChild(document.createElement("br"));
     div.appendChild(link);
-    document.getElementById("output").appendChild(div);
 
-    document.getElementById("status").innerText = "✅ File received!";
+    document.getElementById("output").appendChild(div);
   });
 });
 
 // send
 function sendFile() {
   let file = document.getElementById("fileInput").files[0];
-  if (!file) return alert("Select file first!");
+  if (!file) return alert("Select file!");
 
   let reader = new FileReader();
 
   reader.onload = function() {
-    conn.send(reader.result);
-    document.getElementById("status").innerText = "🚀 File sent!";
+    conn.send({
+      name: file.name,
+      type: file.type,
+      data: reader.result
+    });
   };
 
   reader.readAsArrayBuffer(file);
