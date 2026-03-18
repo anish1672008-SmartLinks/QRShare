@@ -68,7 +68,13 @@ button {
 </div>
 
 <script>
-let peer = new Peer();
+let peer = new Peer({
+  config: {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" }
+    ]
+  }
+});
 let conn;
 
 // ================= PC MODE =================
