@@ -2,146 +2,100 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>⚡ AniShare Pro</title>
+<title>AniShare Lite</title>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <style>
 body {
-  margin:0;
-  font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-  color:white;
-  text-align:center;
+  font-family: Arial;
+  text-align: center;
+  background: #111;
+  color: white;
 }
-
-.container { margin-top:40px; }
-
-.card {
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(15px);
-  border-radius:20px;
-  padding:25px;
-  display:inline-block;
-}
-
 canvas {
-  background:white;
-  padding:10px;
-  border-radius:10px;
+  background: white;
+  padding: 10px;
 }
-
 button {
-  margin-top:10px;
-  padding:10px 20px;
-  border:none;
-  border-radius:10px;
-  background:#00c6ff;
-  cursor:pointer;
-}
-
-.fileBox {
-  margin-top:15px;
-  padding:10px;
-  background:rgba(255,255,255,0.1);
-  border-radius:10px;
+  padding: 10px;
+  margin-top: 10px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-  <h1>⚡ AniShare</h1>
+<h2>📡 AniShare Lite</h2>
 
-  <div class="card" id="mainCard">
-    <canvas id="qr"></canvas>
-    <p id="id"></p>
+<canvas id="qr"></canvas>
+<p id="status">Starting...</p>
 
-    <input type="file" id="fileInput"><br>
-    <button onclick="sendFile()">Send File</button>
-  </div>
+<input type="file" id="fileInput"><br>
+<button onclick="sendFile()">Send</button>
 
-  <h2>📥 Received Files</h2>
-  <div id="output"></div>
-</div>
+<h3>Received Files:</h3>
+<div id="output"></div>
 
 <script>
 let peer = new Peer();
 let conn;
 
-// ================= PC MODE =================
+// PC side
 peer.on('open', function(id) {
+  document.getElementById("status").innerText = "Scan QR to connect";
 
-  document.getElementById("id").innerText = "Scan QR to connect";
-
-  let url = window.location.href + "?connect=" + id;
+  let url = window.location.href + "?id=" + id;
 
   QRCode.toCanvas(document.getElementById('qr'), url);
 });
 
-// ================= MOBILE MODE =================
+// Mobile side
 const params = new URLSearchParams(window.location.search);
-const connectId = params.get("connect");
+const connectId = params.get("id");
 
 if (connectId) {
-
   document.body.innerHTML = `
-    <div style="text-align:center;margin-top:50px;">
-      <h2>⏳ Connecting...</h2>
-    </div>
+    <h2>Connecting...</h2>
   `;
 
   peer.on('open', function() {
     conn = peer.connect(connectId);
 
     conn.on('open', () => {
-      // ✅ UI tabhi dikhe jab connection ready ho
       document.body.innerHTML = `
-        <div style="text-align:center;margin-top:50px;">
-          <h2>✅ Connected - Send File</h2>
-          <input type="file" id="fileInput"><br><br>
-          <button onclick="sendFile()">Send</button>
-        </div>
+        <h2>Connected ✅</h2>
+        <input type="file" id="fileInput"><br>
+        <button onclick="sendFile()">Send</button>
       `;
-    });
-
-    conn.on('error', () => {
-      alert("❌ Connection failed!");
     });
   });
 }
-// ================= RECEIVE =================
+
+// Receive
 peer.on('connection', function(connection) {
   conn = connection;
-  conn.on('open', () => {
-    console.log("✅ Mobile connected");
-  });
-  conn.on('data', function(data) {
 
-    // ✅ Ensure correct object
-    if (!data || !data.buffer) return;
+  conn.on('data', function(data) {
 
     let blob = new Blob([data.data], { type: data.type });
     let url = URL.createObjectURL(blob);
 
-    let div = document.createElement("div");
-    div.className = "fileBox";
+    let link = document.createElement("a");
+    link.href = url;
+    link.download = data.name;
+    link.innerText = "Download " + data.name;
 
-    // ✅ Image preview
-    if (data.type && data.type.startsWith("image/")) {
+    let div = document.createElement("div");
+
+    // Image preview
+    if (data.type.startsWith("image/")) {
       let img = document.createElement("img");
       img.src = url;
       img.style.width = "150px";
       div.appendChild(img);
     }
-
-    // ✅ Download link
-    let link = document.createElement("a");
-    link.href = url;
-    link.download = data.name;
-    link.innerText = "⬇ Download " + data.name;
 
     div.appendChild(document.createElement("br"));
     div.appendChild(link);
@@ -150,30 +104,19 @@ peer.on('connection', function(connection) {
   });
 });
 
-// ================= SEND =================
+// Send
 function sendFile() {
-
   let file = document.getElementById("fileInput").files[0];
-  if (!file) {
-    alert("Select file first!");
-    return;
-  }
-
-  if (!conn || conn.open === false) {
-    alert("Not connected!");
-    return;
-  }
+  if (!file) return alert("Select file");
 
   let reader = new FileReader();
 
-  reader.onload = function(e) {
-
-  conn.send({
-    name: file.name,
-    type: file.type,
-    data: reader.result
-  });
-
+  reader.onload = function() {
+    conn.send({
+      name: file.name,
+      type: file.type,
+      data: reader.result
+    });
   };
 
   reader.readAsArrayBuffer(file);
