@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>⚡ AniShare - QR File Transfer</title>
+
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+<style>
+body {
+  margin:0;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+  color:white;
+  text-align:center;
+}
+
+.container {
+  margin-top:40px;
+}
+
+h1 {
+  font-size:32px;
+}
+
+.card {
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(15px);
+  border-radius:20px;
+  padding:25px;
+  display:inline-block;
+  box-shadow:0 10px 30px rgba(0,0,0,0.5);
+}
+
+canvas {
+  margin:15px;
+  background:white;
+  padding:10px;
+  border-radius:10px;
+}
+
+button {
+  margin-top:10px;
+  padding:10px 20px;
+  border:none;
+  border-radius:10px;
+  background:#00c6ff;
+  color:black;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+input {
+  margin-top:10px;
+}
+
+#status {
+  margin-top:10px;
+  font-size:14px;
+  color:#00ffcc;
+}
+
+.fileBox {
+  margin-top:15px;
+  background:rgba(255,255,255,0.1);
+  padding:10px;
+  border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>⚡ AniShare</h1>
+
+  <div class="card">
+    <canvas id="qr"></canvas>
+    <p id="id"></p>
+
+    <input type="file" id="fileInput"><br>
+    <button onclick="sendFile()">Send File</button>
+
+    <div id="status"></div>
+  </div>
+
+  <h2>📥 Received Files</h2>
+  <div id="output"></div>
+</div>
+
+<script>
+let peer = new Peer();
+let conn;
+
+peer.on('open', function(id) {
+  document.getElementById("id").innerText = "Your ID: " + id;
+
+  let url = window.location.href + "?id=" + id;
+
+  // FIXED QR
+  QRCode.toCanvas(document.getElementById('qr'), url, function (error) {
+    if (error) console.error(error);
+  });
+});
+
+// mobile connect
+const params = new URLSearchParams(window.location.search);
+const connectTo = params.get("id");
+
+if (connectTo) {
+  peer.on('open', function(id) {
+    conn = peer.connect(connectTo);
+
+    conn.on('open', () => {
+      document.body.innerHTML = `
+      <h2 style="color:black">📤 Send File</h2>
+      <input type="file" id="fileInput">
+      <button onclick="sendFile()">Send</button>
+      `;
+    });
+  });
+}
+
+// receive
+peer.on('connection', function(connection) {
+  conn = connection;
+
+  conn.on('data', function(data) {
+    let blob = new Blob([data]);
+    let url = URL.createObjectURL(blob);
+
+    let div = document.createElement("div");
+    div.className = "fileBox";
+
+    let link = document.createElement("a");
+    link.href = url;
+    link.download = "file";
+    link.innerText = "⬇ Download File";
+
+    div.appendChild(link);
+    document.getElementById("output").appendChild(div);
+
+    document.getElementById("status").innerText = "✅ File received!";
+  });
+});
+
+// send
+function sendFile() {
+  let file = document.getElementById("fileInput").files[0];
+  if (!file) return alert("Select file first!");
+
+  let reader = new FileReader();
+
+  reader.onload = function() {
+    conn.send(reader.result);
+    document.getElementById("status").innerText = "🚀 File sent!";
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+</script>
+
+</body>
+</html>
