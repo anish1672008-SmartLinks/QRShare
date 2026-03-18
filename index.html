@@ -69,6 +69,9 @@ button {
 
 <script>
 let peer = new Peer({
+  host: "peerjs-server.herokuapp.com",
+  secure: true,
+  port: 443,
   config: {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" }
