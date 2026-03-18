@@ -125,24 +125,23 @@ if (connectTo) {
 // receive
 peer.on('connection', function(connection) {
   conn = connection;
+conn.on('data', function(data) {
+  let blob = new Blob([data.data], { type: data.type });
+  let url = URL.createObjectURL(blob);
 
-  conn.on('data', function(data) {
-    let blob = new Blob([data]);
-    let url = URL.createObjectURL(blob);
+  let div = document.createElement("div");
+  div.className = "fileBox";
 
-    let div = document.createElement("div");
-    div.className = "fileBox";
+  let link = document.createElement("a");
+  link.href = url;
+  link.download = data.name;
+  link.innerText = "⬇ Download " + data.name;
 
-    let link = document.createElement("a");
-    link.href = url;
-    link.download = "file";
-    link.innerText = "⬇ Download File";
+  div.appendChild(link);
+  document.getElementById("output").appendChild(div);
 
-    div.appendChild(link);
-    document.getElementById("output").appendChild(div);
-
-    document.getElementById("status").innerText = "✅ File received!";
-  });
+  document.getElementById("status").innerText = "✅ File received!";
+});
 });
 
 // send
@@ -153,7 +152,13 @@ function sendFile() {
   let reader = new FileReader();
 
   reader.onload = function() {
-    conn.send(reader.result);
+
+    conn.send({
+      name: file.name,
+      type: file.type,
+      data: reader.result
+    });
+
     document.getElementById("status").innerText = "🚀 File sent!";
   };
 
