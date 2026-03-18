@@ -68,16 +68,7 @@ button {
 </div>
 
 <script>
-let peer = new Peer({
-  host: "peerjs-server.herokuapp.com",
-  secure: true,
-  port: 443,
-  config: {
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" }
-    ]
-  }
-});
+let peer = new Peer();
 let conn;
 
 // ================= PC MODE =================
@@ -132,7 +123,7 @@ peer.on('connection', function(connection) {
     // ✅ Ensure correct object
     if (!data || !data.buffer) return;
 
-    let blob = new Blob([data.buffer], { type: data.type });
+    let blob = new Blob([data.data], { type: data.type });
     let url = URL.createObjectURL(blob);
 
     let div = document.createElement("div");
@@ -177,11 +168,11 @@ function sendFile() {
 
   reader.onload = function(e) {
 
-    conn.send({
-      name: file.name,
-      type: file.type,
-      buffer: e.target.result   // ✅ IMPORTANT FIX
-    });
+  conn.send({
+    name: file.name,
+    type: file.type,
+    data: reader.result
+  });
 
   };
 
