@@ -89,9 +89,7 @@ if (connectId) {
 
   document.body.innerHTML = `
     <div style="text-align:center;margin-top:50px;">
-      <h2>📤 Send File</h2>
-      <input type="file" id="fileInput"><br><br>
-      <button onclick="sendFile()">Send</button>
+      <h2>⏳ Connecting...</h2>
     </div>
   `;
 
@@ -99,15 +97,27 @@ if (connectId) {
     conn = peer.connect(connectId);
 
     conn.on('open', () => {
-      console.log("Connected to PC");
+      // ✅ UI tabhi dikhe jab connection ready ho
+      document.body.innerHTML = `
+        <div style="text-align:center;margin-top:50px;">
+          <h2>✅ Connected - Send File</h2>
+          <input type="file" id="fileInput"><br><br>
+          <button onclick="sendFile()">Send</button>
+        </div>
+      `;
+    });
+
+    conn.on('error', () => {
+      alert("❌ Connection failed!");
     });
   });
 }
-
 // ================= RECEIVE =================
 peer.on('connection', function(connection) {
   conn = connection;
-
+  conn.on('open', () => {
+    console.log("✅ Mobile connected");
+  });
   conn.on('data', function(data) {
 
     // ✅ Ensure correct object
