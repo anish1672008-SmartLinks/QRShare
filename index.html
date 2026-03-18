@@ -67,10 +67,6 @@ input {
   padding:10px;
   border-radius:10px;
 }
-img {
-  margin-top:10px;
-  border-radius:10px;
-}
 </style>
 </head>
 
@@ -97,70 +93,59 @@ img {
 let peer = new Peer();
 let conn;
 
-// PC side (QR show)
 peer.on('open', function(id) {
   document.getElementById("id").innerText = "Your ID: " + id;
 
   let url = window.location.href + "?id=" + id;
 
-  QRCode.toCanvas(document.getElementById('qr'), url);
+  // FIXED QR
+  QRCode.toCanvas(document.getElementById('qr'), url, function (error) {
+    if (error) console.error(error);
+  });
 });
 
-// Mobile connect
+// mobile connect
 const params = new URLSearchParams(window.location.search);
 const connectTo = params.get("id");
 
 if (connectTo) {
-  document.body.innerHTML = `<h2>⏳ Connecting...</h2>`;
-
-  peer.on('open', function() {
+  peer.on('open', function(id) {
     conn = peer.connect(connectTo);
 
     conn.on('open', () => {
       document.body.innerHTML = `
-        <h2 style="color:black">📤 Send File</h2>
-        <input type="file" id="fileInput"><br><br>
-        <button onclick="sendFile()">Send</button>
+      <h2 style="color:black">📤 Send File</h2>
+      <input type="file" id="fileInput">
+      <button onclick="sendFile()">Send</button>
       `;
     });
   });
 }
 
-// Receive
+// receive
 peer.on('connection', function(connection) {
   conn = connection;
 
   conn.on('data', function(data) {
-
-    let blob = new Blob([data.data], { type: data.type });
+    let blob = new Blob([data]);
     let url = URL.createObjectURL(blob);
 
     let div = document.createElement("div");
     div.className = "fileBox";
 
-    // Image preview
-    if (data.type.startsWith("image/")) {
-      let img = document.createElement("img");
-      img.src = url;
-      img.style.width = "150px";
-      div.appendChild(img);
-    }
-
     let link = document.createElement("a");
     link.href = url;
-    link.download = data.name;
-    link.innerText = "⬇ Download " + data.name;
+    link.download = "file";
+    link.innerText = "⬇ Download File";
 
-    div.appendChild(document.createElement("br"));
     div.appendChild(link);
-
     document.getElementById("output").appendChild(div);
 
     document.getElementById("status").innerText = "✅ File received!";
   });
 });
 
-// Send
+// send
 function sendFile() {
   let file = document.getElementById("fileInput").files[0];
   if (!file) return alert("Select file first!");
@@ -168,12 +153,7 @@ function sendFile() {
   let reader = new FileReader();
 
   reader.onload = function() {
-    conn.send({
-      name: file.name,
-      type: file.type,
-      data: reader.result
-    });
-
+    conn.send(reader.result);
     document.getElementById("status").innerText = "🚀 File sent!";
   };
 
